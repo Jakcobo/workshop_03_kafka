@@ -1,15 +1,27 @@
 import json
 import pandas as pd
-from kafka import KafkaProducer
-from src.config import KAFKA_BOOTSTRAP, TOPIC, COMBINED_CSV
+import logging
+from kafka import KafkaConsumer
+from src.config import KAFKA_BOOTSTRAP, TOPIC, DB_URL
+from src.predictor import load_model, predict_df
+from src.db_loader import save_prediction
 
-producer = KafkaProducer(
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+consumer = KafkaConsumer(
+    TOPIC,
     bootstrap_servers=KAFKA_BOOTSTRAP,
-    value_serializer=lambda v: json.dumps(v).encode()
+    value_deserializer=lambda m: json.loads(m.decode('utf-8'))
 )
 
-df = pd.read_csv(COMBINED_CSV)
-for record in df[feature_cols].to_dict(orient='records'):
-    producer.send(TOPIC, record)
+model = load_model()
+logger.info('Consumer started and model loaded')
 
-producer.flush()
+for msg in consumer:
+    record = msg.value
+    features_df = pd.DataFrame([record])
+    pred = predict_df(model, features_df)
+    features_df['happiness_pred'] = pred
+    save_prediction(features_df, DB_URL)
+    logger.info(f"Saved prediction for {record.get('country')} ({record.get('year')})")
