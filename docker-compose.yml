@@ -41,6 +41,8 @@ services:
     build: .
     command: ["python", "-m", "src.streaming.producer"]
     env_file: .env
+    volumes:
+      - ./data:/app/data
     depends_on:
       kafka:
         condition: service_healthy
@@ -51,11 +53,12 @@ services:
     build: .
     command: ["python", "-m", "src.streaming.consumer"]
     env_file: .env
+    volumes:
+      - ./data:/app/data
     depends_on:
       kafka:
         condition: service_healthy
       postgres:
         condition: service_started
-
 volumes:
   pgdata:
