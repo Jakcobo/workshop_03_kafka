@@ -1,5 +1,3 @@
-# src/streaming/producer.py
-
 import json
 import pandas as pd
 import logging
