@@ -171,3 +171,47 @@ workshop_03_kafka/
 * Use `docker compose logs --follow` to tail logs for both producer and consumer.
 * Offset management (`group_id`, `auto_offset_reset='earliest'`) ensures **exactly-once** processing for each message group.
 * You can extend this pattern to multiple topics, services, or even other message brokers (RabbitMQ, AWS MSK, etc.).
+
+
+# Summary of what was done
+
+## 1. Data Ingestion & Cleaning  
+- **Load five annual CSVs (2015–2019)** into separate DataFrames.  
+- **List and reconcile all column names** using fuzzy matching to detect typos and variants.  
+- **Standardize column names** (e.g. `Happiness.Score`, `Score` → `happiness_score`) via a mapping dictionary.  
+- **Merge yearly DataFrames** into a single table, aligning all columns and adding a `year` column.  
+- **Drop irrelevant columns** (`standard_error`, confidence intervals, `dystopia_residual`, `region`) and remove rows missing `trust_government_corruption`.  
+
+## 2. Exploratory Data Analysis (EDA)  
+- **Data structure:** Confirmed 781 rows × 10 core columns (one object, nine numeric).  
+- **Descriptive statistics:** Computed means, standard deviations, ranges and quartiles for all numeric features.  
+- **Distributions:** Plotted histograms to reveal skewness—GDP, life expectancy and social support right-skewed; generosity and corruption trust heavily right-skewed.  
+- **Correlation heatmap:** Identified strong positive links among GDP, life expectancy and happiness; moderate links for freedom and social support; weak links for generosity and corruption trust.  
+- **Pairwise scatterplots:** Verified linear, positively sloped relationships of GDP, health, social support and freedom with happiness.  
+- **Yearly boxplots:** Observed gradual year-to-year improvements in GDP, life expectancy, social support and freedom; generosity and corruption trust remained more variable.  
+
+## 3. Feature Engineering  
+- **Continent**: Mapped each country to its continent to capture regional effects.  
+- **Interaction term**: Created `gdp_support = gdp_per_capita × social_support` to model synergistic impacts.  
+
+## 4. Model Preparation  
+- **Feature matrix (X) and target (y)**: Selected eight core predictors plus engineered features (`continent`, `year`, `gdp_support`).  
+- **Train–test split**: 70% training, 30% testing with fixed random seed for reproducibility.  
+- **One-hot encoding**: Transformed categorical `continent` and `year` into indicator variables; aligned train and test sets.  
+
+## 5. Model Training & Comparison  
+Trained and evaluated five regression pipelines (all scaled via StandardScaler):  
+1. **Linear Regression** — MAE 0.365, R² 0.803  
+2. **Lasso Regression** — MAE 0.424, R² 0.767  
+3. **Gradient Boosting** — MAE 0.338, R² 0.847  
+4. **XGBoost** — MAE 0.348, R² 0.833  
+5. **Random Forest** — MAE 0.323, R² 0.852  
+
+## 6. Final Model Selection  
+- **Random Forest** outperformed all competitors with the lowest MAE (0.323) and highest R² (0.852), balancing accuracy and robustness.  
+- Chosen as the production model for predicting `happiness_score`.
+
+---
+
+**Overall Conclusion:**  
+Through systematic cleaning, thorough EDA, targeted feature engineering and rigorous model comparison, we identified Random Forest as the optimal algorithm for forecasting national happiness scores using socio-economic and regional indicators.  
